@@ -21,8 +21,7 @@ bot = commands.Bot(command_prefix='!', case_insensitive = True)
 bot.remove_command('help')
 
 wb = openpyxl.load_workbook('Role Colours.xlsx')
-ws1 = wb['queer']
-ws2 = wb['engin']
+ws = wb['Sheet 1']
 
 
 @bot.event
@@ -38,6 +37,7 @@ async def on_ready():
 
 
 
+
 helpMessage = '''\n```
 All commands are used in #🤖-bot-commands
 !help      Displays this message
@@ -48,7 +48,7 @@ All commands are used in #🤖-bot-commands
       Some roles can also be given by reacting in #📜-rules-and-info
 
 !suggest [name] [colour]      Suggests a new role to execs with a name and
-      optional hex colour in the form rgb or rrggbb
+      optional hex colour in the form rgb/rrggbb
       Role names with multiple words should be suggested using " "
 ```\n'''
 @bot.command()
@@ -61,18 +61,19 @@ async def roles(ctx):
     if ctx.channel is not botChannel: return
     roleMessage = '\n```\n'
     upper = get(server.roles,name='Ask-Pronouns').position
-    lower = get(server.roles,name='Questioning').position
+    middle = get(server.roles,name='Questioning').position
+    lower = get(server.roles,name='Software').position
     for i in range(len(server.roles)-1,0,-1):
-        if server.roles[i].position <= upper and server.roles[i].position >= lower:
+        if server.roles[i].position <= upper and server.roles[i].position >= middle:
             roleMessage += server.roles[i].name + '  '
-    i = 1
-    while ws1.cell(i,1).value is not None:
-        roleMessage += ws1.cell(i,1).value + '  '
-        i += 1
+    roleMessage += '\n\n'
+    for i in range(len(server.roles)-1,0,-1):
+        if server.roles[i].position < middle and server.roles[i].position >= lower:
+            roleMessage += server.roles[i].name + '  '
     roleMessage += '\n\n'
     i = 1
-    while ws2.cell(i,1).value is not None:
-        roleMessage += ws2.cell(i,1).value + '  '
+    while ws.cell(i,1).value is not None:
+        roleMessage += ws.cell(i,1).value + '  '
         i += 1
     roleMessage += '\n```\n'
     await botChannel.send(roleMessage)
@@ -94,8 +95,8 @@ async def suggest(ctx, name, hex='0x0'):
         except ValueError:
             role = await server.create_role(name=name, colour=discord.Colour(0x0))
         await ctx.author.add_roles(role)
-        ws1.cell(ws1.max_row+1, 1, name)
-        ws1.cell(ws1.max_row, 2, hex)
+        ws.cell(ws.max_row+1, 1, name)
+        ws.cell(ws.max_row, 2, hex)
         wb.save('Role Colours.xlsx')
     for reaction in msg.reactions:
         await reaction.remove(botMember)
@@ -114,15 +115,11 @@ async def on_message(msg):
     if msg.content[0] == '`' and msg.channel is botChannel:
         roles = list(reversed([role.name for role in server.roles]))
         i = 1
-        while ws1.cell(i,1).value is not None:
-            if ws1.cell(i,1).value not in roles:
-                roles += [ws1.cell(i,1).value]
+        while ws.cell(i,1).value is not None:
+            if ws.cell(i,1).value not in roles:
+                roles += [ws.cell(i,1).value]
             i+=1
         i = 1
-        while ws2.cell(i,1).value is not None:
-            if ws2.cell(i,1).value not in roles:
-                roles += [ws2.cell(i,1).value]
-            i+=1
         found = 0
         for roleName in roles:
             if roleName.lower().startswith(msg.content[1:].lower()):
@@ -322,7 +319,7 @@ async def toggleRole(role, member):
     roleObj = get(member.roles,name=role)
     if roleObj is not None:
         if roleObj.position > get(server.roles,name='Ask-Pronouns').position: return
-        if len(roleObj.members) == 1 and roleObj.position < get(server.roles,name='Questioning').position:
+        if len(roleObj.members) == 1 and roleObj.position < get(server.roles,name='Software').position:
             await roleObj.delete()
         else: await member.remove_roles(roleObj)
         return
@@ -335,7 +332,7 @@ async def toggleRole(role, member):
     i = 1
     while ws.cell(i,1).value is not None:
         if ws.cell(i,1).value == role:
-            roleObj = await server.create_role(name=role, colour=discord.Colour(int(ws.cell(i,2).value,16)))
+            roleObj = await server.create_role(name=role, colour=discord.Colour(int(ws1.cell(i,2).value,16)))
             await member.add_roles(roleObj)
             return
         i += 1
